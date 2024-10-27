@@ -1,47 +1,100 @@
 # Lsposed--Module-Model
-传统的xposed框架已经停止在了安卓8.0时代，安卓8.0以后的类xposed框架几乎都是用的Edxposed（已停更，且bug较多）或lsposed+magisk。lsposed模块与传统xposed、edxposed不同，必须手动选择作用域。且lsposed是目前的主流框架，因此模块适配lsposed很有必要。
 
-## 第一步：配置build.gradle
-在app目录下的build.gradle的dependencies里加入：
 
-compileOnly 'de.robv.android.xposed:api:82'
-compileOnly 'de.robv.android.xposed:api:82:sources'
-其实最新的api是89，但89是测试版本，用的最多的还是82版本。目前lsposed团队宣布开发新的api：libxposed，期待一波。
 
-## 第二步：配置settings.gradle
-在settings.gradle的repositories里加上：
+### 1.根目录下 settings.gradle.kts 添加源[](https://kpa32.github.io/post/Android/Xposed%E6%A8%A1%E5%9D%97%E7%BC%96%E5%86%99#_1-%E6%A0%B9%E7%9B%AE%E5%BD%95%E4%B8%8B-settings-gradle-kts-%E6%B7%BB%E5%8A%A0%E6%BA%90)
 
-maven { url 'https://maven.aliyun.com/repository/public/' }
-## 第三步：修改AndroidManifest.xml
-在AndroidManifest.xml的application标签内加上：
+**java**
 
-    <meta-data
-        android:name="xposedmodule"
-        android:value="true" />
-    <meta-data
-        android:name="xposeddescription"
-        android:value="这里是模块描述" />
-    <meta-data
-        android:name="xposedminversion"
-        android:value="89" />
-    <meta-data
-        android:name="xposedscope"
-        android:resource="@array/scope" />
-其中xposedmodule属性声明为true时声明是xposed模块，才能被lsposed及其衍生框架识别，xposedminversion为最低兼容的xposed框架api版本，xposedscope为模块作用域列表，填写后方便用户勾选作用域。
+```
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://api.xposed.info/") // 添加这一行即可
+    }
+}
+```
 
-## 第四步：新建xposed_init
-在src路径下创建assets目录，在该目录下新建xposed_init文件，以文本方式打开填入完整的hook类类名（包名+类名）。
+### 2. app目录下 ./app/build.gradle.kts 添加jar[](https://kpa32.github.io/post/Android/Xposed%E6%A8%A1%E5%9D%97%E7%BC%96%E5%86%99#_2-app%E7%9B%AE%E5%BD%95%E4%B8%8B-app-build-gradle-kts-%E6%B7%BB%E5%8A%A0jar)
 
-## 第五步：编写hook类
-新建hook类时注意要与xposed_init类中所填写的完整类名一致，否则xposed及其衍生框架找不到该hook类。
+**java**
 
-## 第六步：编写lsposed作用域列表
-在res/values路径下新建array.xml，内容如下：
+```
+dependencies {
+    compileOnly("de.robv.android.xposed:api:82")
+    ...
+}
+```
 
-<?xml version="1.0" encoding="utf-8"?>
+### 3.添加作用域 ./app/src/main/res/values 新建资源文件arrays.xml[](https://kpa32.github.io/post/Android/Xposed%E6%A8%A1%E5%9D%97%E7%BC%96%E5%86%99#_3-%E6%B7%BB%E5%8A%A0%E4%BD%9C%E7%94%A8%E5%9F%9F-app-src-main-res-values-%E6%96%B0%E5%BB%BA%E8%B5%84%E6%BA%90%E6%96%87%E4%BB%B6arrays-xml)
+
+**xml**
+
+```
 <resources>
-    <string-array name="scope">
-        <item>com.test.app</item>
+    <string-array name="xposedscope" >
+        <!-- 这里填写模块的作用域应用的包名，可以填多个。 -->
+        <item>com.asobimo.toramonline</item>
     </string-array>
 </resources>
-其中item里填写要hook的目标应用的包名即可。
+```
+
+### 4.添加声明模块 ./app/src/main/AndroidManifest.xml[](https://kpa32.github.io/post/Android/Xposed%E6%A8%A1%E5%9D%97%E7%BC%96%E5%86%99#_4-%E6%B7%BB%E5%8A%A0%E5%A3%B0%E6%98%8E%E6%A8%A1%E5%9D%97-app-src-main-androidmanifest-xml)
+
+**xml**
+
+```
+<application 
+    ...>
+    ...
+
+    <!-- 是否为Xposed模块 -->
+    <meta-data
+        android:name="xposedmodule"
+        android:value="true"/>
+    <!-- 模块的简介（在框架中显示） -->
+    <meta-data
+        android:name="xposeddescription"
+        android:value="我是Xposed模块简介" />
+    <!-- 模块最低支持的Api版本 一般填82即可 -->
+    <meta-data
+        android:name="xposedminversion"
+        android:value="82"/>
+    <!-- 模块作用域 -->
+    <meta-data
+        android:name="xposedscope"
+        android:resource="@array/xposedscope"/>
+</application>
+```
+
+### 5.添加xposed入口[](https://kpa32.github.io/post/Android/Xposed%E6%A8%A1%E5%9D%97%E7%BC%96%E5%86%99#_5-%E6%B7%BB%E5%8A%A0xposed%E5%85%A5%E5%8F%A3)
+
+./app/src/main下面创建**assets**文件夹并在其中创建**xposed\_init**文件 (没有后缀)
+填入下面xposed入口类名 com.kpa.toramhide.MyTest
+
+### 6.添加hook 类[](https://kpa32.github.io/post/Android/Xposed%E6%A8%A1%E5%9D%97%E7%BC%96%E5%86%99#_6-%E6%B7%BB%E5%8A%A0hook-%E7%B1%BB)
+
+**java**
+
+```
+package com.kpa.toramhide;
+
+import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+public class MyTest implements IXposedHookLoadPackage {
+    @Override
+    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
+        // 过滤不必要的应用
+        if (!lpparam.packageName.equals("me.kyuubiran.xposedapp")) return;
+        // 执行Hook
+        hook(lpparam);
+    }
+
+    private void hook(XC_LoadPackage.LoadPackageParam lpparam) {
+        // 具体流程
+    }
+}
+```
