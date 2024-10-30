@@ -16,5 +16,7 @@ class HookEntry : IYukiHookXposedInit {
 
     override fun onHook() = encase {
         // Your code here.
+        
     }
+    
 }
